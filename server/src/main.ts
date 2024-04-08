@@ -25,7 +25,9 @@ const redis_publisher = new Redis(UPSTASH_REDIS_URL);
 
 const redis_subscriber = new Redis(UPSTASH_REDIS_URL);
 
-
+interface socketMessage {
+    message: string | Buffer
+}
 let connectedClients = 0;
 
  /*
@@ -48,6 +50,7 @@ async function buildServer(){
             await redis_publisher.set(CONNECTION_COUNT_KEY, 0)
         }
 
+        
 
         app.io.on("connection", async (io: { on: (arg0: string, arg1: () => void) => void; }) => {
             console.log('Connected Client')
@@ -57,7 +60,7 @@ async function buildServer(){
             await redis_publisher.publish(CONNECION_COUNT_UPDATED_CHANNEL, String(incrClientCount));
 
             //listen for messages reuse message channel
-            io.on(NEW_MESSAGE_CHANNEL, async ({ } ) => {
+            io.on(NEW_MESSAGE_CHANNEL,  () => {
                 
             })
 
