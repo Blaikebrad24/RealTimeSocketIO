@@ -1,9 +1,10 @@
 import dotenv from "dotenv"
 import fastifyCors  from "@fastify/cors";
 import fastifyIO from "fastify-socket.io";
-const fastify = require('fastify')
+import fastify from 'fastify';
 import Redis from 'ioredis';
 import closeWithGrace from "close-with-grace";
+import { randomUUID } from "crypto";
 
 
 dotenv.config();
@@ -25,9 +26,7 @@ const redis_publisher = new Redis(UPSTASH_REDIS_URL);
 
 const redis_subscriber = new Redis(UPSTASH_REDIS_URL);
 
-interface socketMessage {
-    message: string | Buffer
-}
+
 let connectedClients = 0;
 
  /*
@@ -52,16 +51,21 @@ async function buildServer(){
 
         
 
-        app.io.on("connection", async (io: { on: (arg0: string, arg1: () => void) => void; }) => {
+        app.io.on("connection", async (io) => {
             console.log('Connected Client')
             const incrClientCount = await redis_publisher.incr(CONNECTION_COUNT_KEY);
             connectedClients++;
 
             await redis_publisher.publish(CONNECION_COUNT_UPDATED_CHANNEL, String(incrClientCount));
+            
+            
 
             //listen for messages reuse message channel
-            io.on(NEW_MESSAGE_CHANNEL,  () => {
-                
+            // had to downgrade the fastify/fastify-socketio dependencies
+            io.on(NEW_MESSAGE_CHANNEL,  async ({message}) => {
+                console.log(message)
+                //publish to redis channel
+                // await redis_publisher.publish(NEW_MESSAGE_CHANNEL, message.toString());
             })
 
             io.on("disconnect",async () =>{
@@ -79,9 +83,18 @@ async function buildServer(){
                 console.error(`Error subscribing to ${CONNECION_COUNT_UPDATED_CHANNEL}`, error);
                 return;
             }
-            console.log(`${count} clients connected to ${CONNECION_COUNT_UPDATED_CHANNEL} channel`);
+            console.log(`${count} clients subscribed to ${CONNECION_COUNT_UPDATED_CHANNEL} channel`);
         
         });
+
+        redis_subscriber.subscribe(NEW_MESSAGE_CHANNEL, (error, count) => {
+
+            if(error){
+                console.error(`Error subscribing to the ${NEW_MESSAGE_CHANNEL}`);
+                return;
+            }
+            console.log(`${count} clients connected to  ${NEW_MESSAGE_CHANNEL} channel`)
+        })
 
         // receive messages and do something 
 
@@ -89,9 +102,19 @@ async function buildServer(){
             if(channel === CONNECION_COUNT_UPDATED_CHANNEL){
 
                 app.io.emit(CONNECION_COUNT_UPDATED_CHANNEL, {
-                    count: text
+                    message: text
                 })
                 return;
+            }
+
+            if(channel === NEW_MESSAGE_CHANNEL)
+            {
+                app.io.emit(NEW_MESSAGE_CHANNEL, {
+                    message: text,
+                    id: randomUUID(),
+                    createdAt: new Date(),
+                    port: PORT,
+                })
             }
         })
 
