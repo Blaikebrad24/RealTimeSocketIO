@@ -3,6 +3,3 @@ build
 .env
 ApplicationFlow.md
 run.sh
-Caddyfile
-docker-compose.yml
-Dockerfile
