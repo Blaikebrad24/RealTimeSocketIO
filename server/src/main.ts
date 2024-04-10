@@ -12,7 +12,7 @@ const PORT = parseInt(process.env.PORT || '3001', 10) // base10 , 3001 so that t
 const HOST = process.env.host || '0.0.0.0' // docker does not know what localhost is 
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000'
-const UPSTASH_REDIS_URL = process.env.REDIS_URL_ENDPOINT;
+const UPSTASH_REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
 
 const CONNECTION_COUNT_KEY = "chat:connection-count";
 const CONNECION_COUNT_UPDATED_CHANNEL = 'chat:connection-count-updated'
@@ -62,10 +62,12 @@ async function buildServer(){
 
             //listen for messages reuse message channel
             // had to downgrade the fastify/fastify-socketio dependencies
-            io.on(NEW_MESSAGE_CHANNEL,  async ({message}) => {
-                console.log(message)
-                //publish to redis channel
-                // await redis_publisher.publish(NEW_MESSAGE_CHANNEL, message.toString());
+            io.on(NEW_MESSAGE_CHANNEL,  async (payload) => {
+
+                const message = payload.message;
+                if(!message){return;}
+                console.log(message);
+                await redis_publisher.publish(NEW_MESSAGE_CHANNEL, message.toString());
             })
 
             io.on("disconnect",async () =>{
