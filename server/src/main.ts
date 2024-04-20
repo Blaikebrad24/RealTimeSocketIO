@@ -70,13 +70,13 @@ async function buildServer(){
                 await redis_publisher.publish(NEW_MESSAGE_CHANNEL, message.toString());
             })
 
-            io.on("disconnect",async () =>{
+            io.on("disconnect", async () =>{
                 connectedClients--;
                 console.log("Client Disconnected")
                 const decrClientCount = await redis_publisher.decr(CONNECTION_COUNT_KEY);
                 await redis_publisher.publish(CONNECION_COUNT_UPDATED_CHANNEL, String(decrClientCount));
-            })
-        })
+            });
+        });
 
         redis_subscriber.subscribe(CONNECION_COUNT_UPDATED_CHANNEL,(error, count) =>{
 
@@ -100,11 +100,11 @@ async function buildServer(){
 
         // receive messages and do something 
 
-        redis_subscriber.on('message',(channel, text) => {
+        redis_subscriber.on("message",(channel, text) => {
             if(channel === CONNECION_COUNT_UPDATED_CHANNEL){
 
                 app.io.emit(CONNECION_COUNT_UPDATED_CHANNEL, {
-                    message: text
+                    count: text,
                 })
                 return;
             }
@@ -173,6 +173,4 @@ async function buildServer(){
 
  main();
 
-function async(arg0: { message: number; }): () => void {
-    throw new Error("Function not implemented.");
-}
+
